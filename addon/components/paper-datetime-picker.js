@@ -7,6 +7,7 @@ import keyEvents from 'ember-paper-time-picker/mixins/key-events';
 import layout from '../templates/components/paper-datetime-picker';
 import TimePicker from 'ember-paper-time-picker/utils/time-picker';
 import paperDate from 'ember-paper-time-picker/utils/paper-date';
+import momentFormatParser from 'ember-paper-time-picker/utils/moment-format-parser';
 import Assert from 'busy-utils/assert';
 
 /**
@@ -75,7 +76,7 @@ export default Ember.Component.extend(keyEvents, {
 
 	lastSaveTime: null,
 
-	format: 'MMM DD, YYYY',
+	format: 'MM/DD/YYYY hh:mm A',
 
 	/**
 	 * Merdian (AM/PM) that is shown in the input bar
@@ -243,12 +244,14 @@ export default Ember.Component.extend(keyEvents, {
 	updateInputValues: Ember.observer('paper.timestamp', function() {
 		const time = this.get('paper.date');
 
-		this.set('timestampMeridian', time.format('A'));
+		this.set('timestampDate', time.format(this.get('format')));
+
+		/*this.set('timestampMeridian', time.format('A'));
 		this.set('timestampMinutes', time.format('mm'));
 		this.set('timestampHours', time.format('hh'));
 		this.set('timestampDays', time.format('DD'));
 		this.set('timestampMonths', time.format('MM'));
-		this.set('timestampYears', time.format('YYYY'));
+		this.set('timestampYears', time.format('YYYY'));*/
 	}),
 
 	/**
@@ -337,6 +340,25 @@ export default Ember.Component.extend(keyEvents, {
 	focusState(state) {
 		state = Ember.String.singularize(state);
 		this.$(`.section.${state} > input`).focus();
+	},
+
+	getCursorPosition(input) {
+		if (!input) {
+			// No (input) element found
+			return;
+		}
+
+		if ('selectionStart' in input) {
+			// Standard-compliant browsers
+			return input.selectionStart;
+		} else if (document.selection) {
+			// IE
+			input.focus();
+			var sel = document.selection.createRange();
+			var selLen = document.selection.createRange().text.length;
+			sel.moveStart('character', -input.value.length);
+			return sel.text.length - selLen;
+		}
 	},
 
 	actions: {
@@ -524,6 +546,57 @@ export default Ember.Component.extend(keyEvents, {
 		update(state, timestamp) {
 			this.focusState(state);
 			this.setTimestamp(timestamp);
+		},
+
+
+		/**** Single input actions ****/
+
+		keyUpAction() {
+
+		},
+
+		keyDownAction() {
+
+		},
+
+		focusAction() {
+		},
+
+		clickAction() {
+			event.stopPropagation();
+			const input = Ember.$(event.target).get(0);
+			let pos = this.getCursorPosition(input);
+
+			// for start position move ahead one
+			// so slice will get a value
+			if (pos === 0) {
+				pos = pos + 1;
+			}
+
+			const specialChars = new RegExp(/[\/\.-: ]/);
+			const format = this.get('format');
+			let char = format[pos];
+			if (char === undefined) {
+				pos = pos - 1;
+				char = format[pos];
+			}
+
+			let chars = format.slice(pos - 1, pos + 1);
+			// shift chars to remove special characters
+			if (specialChars.test(chars[0])) {
+				chars = format.slice(pos, pos + 2).trim();
+			} else if (specialChars.test(chars[1])) {
+				chars = format.slice(pos-2, pos).trim();
+			}
+
+			const state = momentFormatParser.getFormatType(chars);
+
+			console.log('click', pos, char, '-' + chars + '-', state);
+
+			const isOpen = true;
+			const isTop = this.shouldPickerOpenTop();
+			this.setActiveState({ state, isOpen, isTop });
+			return false;
 		},
 	}
 });
