@@ -336,7 +336,8 @@ export default Ember.Component.extend(keyEvents, {
 
 	focusState(state) {
 		state = Ember.String.singularize(state);
-		this.$(`.section.${state} > input`).focus();
+		this.send('focusInput', state);
+		// this.$(`.section.${state} > input`).focus();
 	},
 
 	actions: {
@@ -348,6 +349,7 @@ export default Ember.Component.extend(keyEvents, {
 		 * @event focusInput
 		 */
 		focusInput(state) {
+			this.sendAction('onOpen');
 			if (Ember.isEmpty(state)) {
 				state = 'hour';
 				if (!this.get('activeState.showTime')) {
@@ -363,6 +365,7 @@ export default Ember.Component.extend(keyEvents, {
 		},
 
 		closeAction() {
+			this.sendAction('onClose');
 			this.setActiveState({ state: '', isOpen: false, isTop: false });
 		},
 
